@@ -68,25 +68,48 @@ def _append_library_version_headers(headers: dict[str, str]) -> None:
 
 
 def _patch_http_options(
-    options: HttpOptionsDict, patch_options: dict[str, Any]
+    options: HttpOptionsDict, patch_options: HttpOptionsDict
 ) -> HttpOptionsDict:
-  # use shallow copy so we don't override the original objects.
-  copy_option = HttpOptionsDict()
-  copy_option.update(options)
-  for patch_key, patch_value in patch_options.items():
-    # if both are dicts, update the copy.
-    # This is to handle cases like merging headers.
-    if isinstance(patch_value, dict) and isinstance(
-        copy_option.get(patch_key, None), dict
-    ):
-      copy_option[patch_key] = {}
-      copy_option[patch_key].update(
-          options[patch_key]
-      )  # shallow copy from original options.
-      copy_option[patch_key].update(patch_value)
-    elif patch_value is not None:  # Accept empty values.
-      copy_option[patch_key] = patch_value
-  if copy_option['headers']:
+  copy_option = options.copy()
+
+  def _filter_none_from_headers_dict(
+      headers_dict: Optional[dict[str, Any]],
+  ) -> dict[str, str]:
+    if headers_dict is None:
+      return {}
+    return {
+        k: headers_dict[k] for k in headers_dict if headers_dict[k] is not None
+    }
+
+  filtered_options_headers = _filter_none_from_headers_dict(
+      copy_option.get('headers')
+  )
+  filtered_patch_options_headers = _filter_none_from_headers_dict(
+      patch_options.get('headers')
+  )
+  copy_option['headers'] = {
+      **filtered_options_headers,
+      **filtered_patch_options_headers,
+  }
+
+  # need to use string literal for typeddict keys
+  copy_option['base_url'] = (
+      patch_options.get('base_url')
+      if patch_options.get('base_url') is not None
+      else options.get('base_url')
+  )
+  copy_option['api_version'] = (
+      patch_options.get('api_version')
+      if patch_options.get('api_version') is not None
+      else options.get('api_version')
+  )
+  copy_option['timeout'] = (
+      patch_options.get('timeout')
+      if patch_options.get('timeout') is not None
+      else options.get('timeout')
+  )
+
+  if copy_option['headers'] is not None:
     _append_library_version_headers(copy_option['headers'])
   return copy_option
 
@@ -122,6 +145,18 @@ def _load_auth(*, project: Union[str, None]) -> Tuple[Credentials, str]:
 def _refresh_auth(credentials: Credentials) -> Credentials:
   credentials.refresh(Request())
   return credentials
+
+
+def _create_http_options_typeddict_from_dict(
+    untyped_http_options: dict[str, Any],
+) -> HttpOptionsDict:
+  """Converts a dict to a HttpOptionsDict."""
+  return HttpOptionsDict(
+      base_url=untyped_http_options.get('base_url'),
+      api_version=untyped_http_options.get('api_version'),
+      headers=untyped_http_options.get('headers'),
+      timeout=untyped_http_options.get('timeout'),
+  )
 
 
 @dataclass
@@ -200,7 +235,13 @@ class HttpResponse:
       for chunk in self.response_stream:
         yield json.loads(chunk) if chunk else {}
     elif self.response_stream is None:
-      async for c in []:
+
+      async def empty_async_generator() -> AsyncIterator[str]:
+        """An empty asynchronous generator."""
+        if False:  # never executes, but satisfies mypy
+          yield 'nothing'
+
+      async for c in empty_async_generator():
         yield c
     else:
       # Iterator of objects retrieved from the API.
@@ -216,9 +257,7 @@ class HttpResponse:
               chunk = chunk[len('data: ') :]
             yield json.loads(chunk)
       else:
-        raise ValueError(
-            'Error parsing streaming response.'
-        )
+        raise ValueError('Error parsing streaming response.')
 
   def byte_segments(self):
     if isinstance(self.byte_stream, list):
@@ -308,16 +347,18 @@ class BaseApiClient:
       )
 
     # Validate http_options if it is provided.
-    validated_http_options: dict[str, Any]
+    validated_http_options = HttpOptionsDict()
     if isinstance(http_options, dict):
       try:
-        validated_http_options = HttpOptions.model_validate(
-            http_options
-        ).model_dump()
+        validated_http_options = _create_http_options_typeddict_from_dict(
+            HttpOptions.model_validate(http_options).model_dump()
+        )
       except ValidationError as e:
         raise ValueError(f'Invalid http_options: {e}')
     elif isinstance(http_options, HttpOptions):
-      validated_http_options = http_options.model_dump()
+      validated_http_options = _create_http_options_typeddict_from_dict(
+          http_options.model_dump()
+      )
 
     # Retrieve implicitly set values from the environment.
     env_project = os.environ.get('GOOGLE_CLOUD_PROJECT', None)
@@ -328,7 +369,7 @@ class BaseApiClient:
     self.api_key = api_key or env_api_key
 
     self._credentials = credentials
-    self._http_options = HttpOptionsDict()
+    self._http_options = HttpOptionsDict(headers={})
     # Initialize the lock. This lock will be used to protect access to the
     # credentials. This is crucial for thread safety when multiple coroutines
     # might be accessing the credentials at the same time.
@@ -396,14 +437,16 @@ class BaseApiClient:
     # Default options for both clients.
     self._http_options['headers'] = {'Content-Type': 'application/json'}
     if self.api_key:
-      self._http_options['headers']['x-goog-api-key'] = self.api_key
+      if self._http_options['headers'] is not None:
+        self._http_options['headers']['x-goog-api-key'] = self.api_key
     # Update the http options with the user provided http options.
     if http_options:
       self._http_options = _patch_http_options(
           self._http_options, validated_http_options
       )
     else:
-      _append_library_version_headers(self._http_options['headers'])
+      if self._http_options['headers'] is not None:
+        _append_library_version_headers(self._http_options['headers'])
     # Initialize the httpx client.
     self._httpx_client = SyncHttpxClient()
     self._async_httpx_client = AsyncHttpxClient()
@@ -446,9 +489,7 @@ class BaseApiClient:
             self.project = project
 
     if self._credentials:
-      if (
-          self._credentials.expired or not self._credentials.token
-      ):
+      if self._credentials.expired or not self._credentials.token:
         # Only refresh when it needs to. Default expiration is 3600 seconds.
         async with self._auth_lock:
           if self._credentials.expired or not self._credentials.token:
@@ -476,8 +517,10 @@ class BaseApiClient:
     # patch the http options with the user provided settings.
     if http_options:
       if isinstance(http_options, HttpOptions):
+        http_options_dict = http_options.model_dump()
         patched_http_options = _patch_http_options(
-            self._http_options, http_options.model_dump()
+            self._http_options,
+            _create_http_options_typeddict_from_dict(http_options_dict),
         )
       else:
         patched_http_options = _patch_http_options(
@@ -500,9 +543,20 @@ class BaseApiClient:
         and not self.api_key
     ):
       path = f'projects/{self.project}/locations/{self.location}/' + path
+
+    if patched_http_options['api_version'] is None or not patched_http_options['api_version']:
+      versioned_path = f'/{path}'
+    else:
+      versioned_path = f'/{patched_http_options["api_version"]}/{path}'
+
+    if patched_http_options['base_url'] is None or not patched_http_options['base_url']:
+      raise ValueError('Base URL must be set.')
+    else:
+      base_url = patched_http_options['base_url']
+
     url = _join_url_path(
-        patched_http_options.get('base_url', ''),
-        patched_http_options.get('api_version', '') + '/' + path,
+        base_url,
+        versioned_path,
     )
 
     timeout_in_seconds: Optional[Union[float, int]] = patched_http_options.get(
@@ -515,6 +569,8 @@ class BaseApiClient:
     else:
       timeout_in_seconds = None
 
+    if patched_http_options['headers'] is None:
+      raise ValueError('Request headers must be set.')
     return HttpRequest(
         method=http_method,
         url=url,
