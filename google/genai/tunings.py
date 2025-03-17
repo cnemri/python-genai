@@ -754,11 +754,21 @@ class Tunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -820,11 +830,21 @@ class Tunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -891,11 +911,21 @@ class Tunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -958,11 +988,21 @@ class Tunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -1098,11 +1138,21 @@ class AsyncTunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -1164,11 +1214,21 @@ class AsyncTunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -1235,11 +1295,21 @@ class AsyncTunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
@@ -1302,11 +1372,21 @@ class AsyncTunings(_api_module.BaseModule):
     # TODO: remove the hack that pops config.
     request_dict.pop('config', None)
 
-    http_options: Optional[types.HttpOptionsOrDict] = None
+    http_options: Optional[types.HttpOptionsDict] = None
     if isinstance(config, dict):
       http_options = config.get('http_options', None)
-    elif hasattr(config, 'http_options') and config is not None:
-      http_options = config.http_options
+    elif (
+        hasattr(config, 'http_options')
+        and config is not None
+        and config.http_options is not None
+    ):
+      http_options_dict = config.http_options.model_dump()
+      http_options = types.HttpOptionsDict(
+          base_url=http_options_dict.get('base_url'),
+          api_version=http_options_dict.get('api_version'),
+          headers=http_options_dict.get('headers'),
+          timeout=http_options_dict.get('timeout'),
+      )
 
     request_dict = _common.convert_to_dict(request_dict)
     request_dict = _common.encode_unserializable_types(request_dict)
