@@ -2918,6 +2918,35 @@ class GenerateContentResponse(_common.BaseModel):
   )
 
   @property
+  def _text(self) -> Optional[str]:
+    """Returns the concatenation of all text parts in the response.
+
+    This is an internal method that doesn't include logging when called.
+    """
+    if (
+        not self.candidates
+        or not self.candidates[0].content
+        or not self.candidates[0].content.parts
+    ):
+      return None
+    text = ''
+    any_text_part_text = False
+    non_text_parts = []
+    for part in self.candidates[0].content.parts:
+      for field_name, field_value in part.model_dump(
+          exclude={'text', 'thought'}
+      ).items():
+        if field_value is not None:
+          non_text_parts.append(field_name)
+      if isinstance(part.text, str):
+        if isinstance(part.thought, bool) and part.thought:
+          continue
+        any_text_part_text = True
+        text += part.text
+    # part.text == '' is different from part.text is None
+    return text if any_text_part_text else None
+
+  @property
   def text(self) -> Optional[str]:
     """Returns the concatenation of all text parts in the response."""
     if (
@@ -3037,16 +3066,16 @@ class GenerateContentResponse(_common.BaseModel):
     ):
       # Pydantic schema.
       try:
-        if result.text is not None:
-          result.parsed = response_schema.model_validate_json(result.text)
+        if result._text is not None:
+          result.parsed = response_schema.model_validate_json(result._text)
       # may not be a valid json per stream response
       except pydantic.ValidationError:
         pass
       except json.decoder.JSONDecodeError:
         pass
-    elif isinstance(response_schema, EnumMeta) and result.text is not None:
+    elif isinstance(response_schema, EnumMeta) and result._text is not None:
       # Enum with "application/json" returns response in double quotes.
-      enum_value = result.text.replace('"', '')
+      enum_value = result._text.replace('"', '')
       try:
         result.parsed = response_schema(enum_value)
         if (
@@ -3064,8 +3093,8 @@ class GenerateContentResponse(_common.BaseModel):
         placeholder: response_schema  # type: ignore[valid-type]
 
       try:
-        if result.text is not None:
-          parsed = {'placeholder': json.loads(result.text)}
+        if result._text is not None:
+          parsed = {'placeholder': json.loads(result._text)}
           placeholder = Placeholder.model_validate(parsed)
           result.parsed = placeholder.placeholder
       except json.decoder.JSONDecodeError:
@@ -3080,8 +3109,8 @@ class GenerateContentResponse(_common.BaseModel):
       # want the result converted to. So just return json.
       # JSON schema.
       try:
-        if result.text is not None:
-          result.parsed = json.loads(result.text)
+        if result._text is not None:
+          result.parsed = json.loads(result._text)
       # may not be a valid json per stream response
       except json.decoder.JSONDecodeError:
         pass
@@ -3091,12 +3120,12 @@ class GenerateContentResponse(_common.BaseModel):
       for union_type in union_types:
         if issubclass(union_type, pydantic.BaseModel):
           try:
-            if result.text is not None:
+            if result._text is not None:
 
               class Placeholder(pydantic.BaseModel):  # type: ignore[no-redef]
                 placeholder: response_schema  # type: ignore[valid-type]
 
-              parsed = {'placeholder': json.loads(result.text)}
+              parsed = {'placeholder': json.loads(result._text)}
               placeholder = Placeholder.model_validate(parsed)
               result.parsed = placeholder.placeholder
           except json.decoder.JSONDecodeError:
@@ -3105,8 +3134,8 @@ class GenerateContentResponse(_common.BaseModel):
             pass
         else:
           try:
-            if result.text is not None:
-              result.parsed = json.loads(result.text)
+            if result._text is not None:
+              result.parsed = json.loads(result._text)
           # may not be a valid json per stream response
           except json.decoder.JSONDecodeError:
             pass

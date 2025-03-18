@@ -1780,3 +1780,25 @@ def test_multiple_function_calls(client):
   assert 'sunny' in response.text
   assert '100 degrees' in response.text
   assert '$100' in response.text
+
+
+def test_response_parsed_does_not_log_warning(client, caplog):
+  caplog.set_level(logging.DEBUG, logger='google_genai')
+
+  class SongLyric(BaseModel):
+    song_name: str
+    lyric: str
+    artist: str
+
+  response = client.models.generate_content(
+      model='gemini-1.5-flash',
+      contents='Can you give me 2 Taylor Swift song lyrics?',
+      config=types.GenerateContentConfig(
+          response_mime_type='application/json',
+          response_schema=SongLyric,
+          candidate_count=2,
+      )
+  )
+  assert response.parsed
+  assert len(response.candidates) == 2
+  assert 'returning text from the first candidate' not in caplog.text
